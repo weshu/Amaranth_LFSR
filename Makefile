@@ -5,7 +5,7 @@
 
 help:
 	@printf 'Project Make\n'
-	@printf 'Please use `make target' where target is one of\n'
+	@printf 'Please use `make target` where target is one of\n'
 	@printf '    init           to init the project, create some empty folders\n'
 	@printf '    unittest       to run the unit test\n'
 	@printf '    verilog        to generate verilog file for the top module\n'
@@ -27,14 +27,14 @@ unittest:
 
 # Verilog gen
 verilog:
-	python -m hw.project_name.Top --no-src
+	python -m hw.Lfsr.Lfsr --no-src
 
 verilog-dbg:
-	python -m hw.project_name.Top
+	python -m hw.Lfsr.Lfsr
 
 # Doc gen
 apidoc:
-	sphinx-apidoc -f -e -o ./docs/source/apidoc ./hw/
+	sphinx-apidoc -f -o ./docs/source/apidoc ./hw/
 
 html:
 	$(MAKE) -C ./docs/ html
@@ -44,7 +44,7 @@ docs: apidoc html
 clean:
 	rm -f ./hw/gen/*
 	rm -f ./tests/waveform/*
-	rm -f ./docs/source/_static/*
+	rm -f ./docs/source/apidoc/*
 
 clean-docs:
 	$(MAKE) -C ./docs/ clean

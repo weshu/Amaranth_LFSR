@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath('../../'))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'AmaranthHDL base prj'
+project = 'AmaranthHDL LFSR'
 copyright = '2024, weifeng shu'
 author = 'weifeng shu'
 release = '0.0.1'

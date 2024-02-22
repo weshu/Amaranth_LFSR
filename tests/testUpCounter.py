@@ -1,6 +1,5 @@
 from amaranth.sim import Simulator
 from unittest import TestCase
-from hw.project_name.UpCounter import * 
 
 class TestUpCounter(TestCase):
     def testCase1(self):
