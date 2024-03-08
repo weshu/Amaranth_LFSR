@@ -2,7 +2,8 @@ import argparse
 from amaranth import *
 from amaranth.back import verilog
 
-import numpy as np
+import sys
+from hw.Common import *
 
 class Lfsr_config():
     """
@@ -63,7 +64,7 @@ class Lfsr_config():
         DIN (LSB first)
             |
             V
-        (+)<---------------------------(+)<-----------------------------.
+           (+)<---------------------------(+)<-----------------------------.
             |                              ^                               |
             |  .----.  .----.       .----. |  .----.       .----.  .----.  |
             +->|  0 |->|  1 |->...->| 38 |-+->| 39 |->...->| 56 |->| 57 |--'
@@ -123,7 +124,7 @@ class Lfsr_config():
     STYLE = "AUTO"
     """
     STYLE :
-        Specify implementation style.  Can be "AUTO", "LOOP", or "REDUCTION".  
+        Specify implementation style.  Can be "AUTO", "LOOP", or "REDUCTION".
 
          - When "AUTO" is selected, implemenation will be "LOOP" or "REDUCTION" based on synthesis translate directives.
          - "REDUCTION" and "LOOP" are functionally identical, however they simulate and synthesize differently.  
@@ -133,6 +134,56 @@ class Lfsr_config():
             - "LOOP" synthesizes will in both ISE and Quartus.  
          - "AUTO" will default to "REDUCTION" when simulating and "LOOP" for synthesizers that obey synthesis translate directives.
     """
+
+    def __init__(self, width = 31,
+                       poly = 0x10000001,
+                       data_width = 8,
+                       config = "FIBONACCI",
+                       feed_forward = 0,
+                       reverse = 0
+                        ):
+        self.DATA_WIDTH = data_width
+        self.LFSR_CONFIG = config
+        self.LFSR_WIDTH = width
+        self.LFSR_POLY  = poly
+        self.LFSR_FEED_FORWARD = feed_forward
+        self.REVERSE    = reverse
+
+class Lfsr_config_fibonacci(Lfsr_config):
+    """
+    LFSR module configuration with config=="FIBONACCI"
+    Other parameters is exactly the same with Lfsr_config
+    """
+    def __init__(self, width = 31,
+                       poly = 0x10000001,
+                       data_width = 8,
+                       feed_forward = 0,
+                       reverse = 0
+                        ):
+        self.DATA_WIDTH = data_width
+        self.LFSR_CONFIG = "FIBONACCI"
+        self.LFSR_WIDTH = width
+        self.LFSR_POLY  = poly
+        self.LFSR_FEED_FORWARD = feed_forward
+        self.REVERSE    = reverse
+
+class Lfsr_config_galois(Lfsr_config):
+    """
+    LFSR module configuration with config=="GALOIS"
+    Other parameters is exactly the same with Lfsr_config
+    """
+    def __init__(self, width = 31,
+                       poly = 0x10000001,
+                       data_width = 8,
+                       feed_forward = 0,
+                       reverse = 0
+                        ):
+        self.DATA_WIDTH = data_width
+        self.LFSR_CONFIG = "GALOIS"
+        self.LFSR_WIDTH = width
+        self.LFSR_POLY  = poly
+        self.LFSR_FEED_FORWARD = feed_forward
+        self.REVERSE    = reverse
 
 class Lfsr(Elaboratable):
     """
@@ -164,101 +215,161 @@ class Lfsr(Elaboratable):
 
     def calc_mask(self):
         """
-        next_state[offset] = XOR([mask_state[offset] & stat_in, mask_data[offset] & data_in])
+        calculate the masks for nex state and data
 
-        for default configuration:
-            DATA_WIDTH = 8
-            LFSR_WIDTH = 31
-            LFSR_POLY = 0x10000001
-            LFSR_CONFIG = "FIBONACCI"
-            LFSR_FEED_FORWARD = 0
-            REVERSE = 0
-            STYLE = "AUTO"
-        the mask_state matrix is:
-            [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0.]
-            [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0. 0. 0. 0. 0. 0.]
-            [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0. 0. 0. 0. 0.]
-            [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0. 0. 0. 0.]
-            [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0. 0. 0.]
-            [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0. 0.]
-            [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0.]
-            [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1.]
-            [1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
-            [0. 1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
-            [0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
-            [0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
-            ...
-            [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
-            [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0.]
-        the mask_data matrix is:
-            [1. 0. 0. 0. 0. 0. 0. 0.]
-            [0. 1. 0. 0. 0. 0. 0. 0.]
-            [0. 0. 1. 0. 0. 0. 0. 0.]
-            [0. 0. 0. 1. 0. 0. 0. 0.]
-            [0. 0. 0. 0. 1. 0. 0. 0.]
-            [0. 0. 0. 0. 0. 1. 0. 0.]
-            [0. 0. 0. 0. 0. 0. 1. 0.]
-            [0. 0. 0. 0. 0. 0. 0. 1.]
-            [0. 0. 0. 0. 0. 0. 0. 0.]
-            [0. 0. 0. 0. 0. 0. 0. 0.]
-            [0. 0. 0. 0. 0. 0. 0. 0.]
-            ...
-            [0. 0. 0. 0. 0. 0. 0. 0.]
-            [0. 0. 0. 0. 0. 0. 0. 0.]
-        for next_state[0], it is XOR([stat_in[20], stat_in[23], data_in[0]])
-            stat_in[23], after 1 clock cycle, will shift 8 bits(DATA_WIDTH) to be bit[31]
-            stat_in[20], after 1 clock cycle, will shift 8 bits(DATA_WIDTH) to be bit[28]
-            plus data_in bit [0]
+        .. code::
 
-        ..  code:: 
+            next_state[offset] = XOR([mask_state[offset] & stat_in, mask_data[offset] & data_in])
+            next_data[offset]  = XOR([output_mask_state[offset] & stat_in, output_mask_data[offset] & data_in])
 
-            DIN (LSB first)
-                |
-                V
-                (+)<---------------------------(+)<------------------------.
-                |                              ^                          |
-                |  .----.  .----.       .----. |  .----.  .----.  .----.  |
-                +->|  0 |->|  1 |->...->| 28 |-+->| 29 |->| 30 |->| 31 |--'
-                |  '----'  '----'       '----'    '----'  '----'  '----'
-                V
-            DOUT
-        """
+            for default configuration:
+                DATA_WIDTH = 8
+                LFSR_WIDTH = 31
+                LFSR_POLY = 0x10000001
+                LFSR_CONFIG = "FIBONACCI"
+                LFSR_FEED_FORWARD = 0
+                REVERSE = 0
+                STYLE = "AUTO"
+            the mask_state matrix is:
+                [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0.]
+                [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0. 0. 0. 0. 0. 0.]
+                [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0. 0. 0. 0. 0.]
+                [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0. 0. 0. 0.]
+                [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0. 0. 0.]
+                [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0. 0.]
+                [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1. 0.]
+                [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 1.]
+                [1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+                [0. 1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+                [0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+                [0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+                ...
+                [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+                [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0.]
+            the mask_data matrix is:
+                [1. 0. 0. 0. 0. 0. 0. 0.]
+                [0. 1. 0. 0. 0. 0. 0. 0.]
+                [0. 0. 1. 0. 0. 0. 0. 0.]
+                [0. 0. 0. 1. 0. 0. 0. 0.]
+                [0. 0. 0. 0. 1. 0. 0. 0.]
+                [0. 0. 0. 0. 0. 1. 0. 0.]
+                [0. 0. 0. 0. 0. 0. 1. 0.]
+                [0. 0. 0. 0. 0. 0. 0. 1.]
+                [0. 0. 0. 0. 0. 0. 0. 0.]
+                [0. 0. 0. 0. 0. 0. 0. 0.]
+                [0. 0. 0. 0. 0. 0. 0. 0.]
+                ...
+                [0. 0. 0. 0. 0. 0. 0. 0.]
+                [0. 0. 0. 0. 0. 0. 0. 0.]
+            for next_state[0], it is XOR([stat_in[20], stat_in[23], data_in[0]])
+                stat_in[23], after 1 clock cycle, will shift 8 bits(DATA_WIDTH) to be bit[31]
+                stat_in[20], after 1 clock cycle, will shift 8 bits(DATA_WIDTH) to be bit[28]
+                plus data_in bit [0]
+
+                DIN (LSB first)
+                    |
+                    V
+                    (+)<---------------------------(+)<------------------------.
+                    |                              ^                          |
+                    |  .----.  .----.       .----. |  .----.  .----.  .----.  |
+                    +->|  0 |->|  1 |->...->| 28 |-+->| 29 |->| 30 |->| 31 |--'
+                    |  '----'  '----'       '----'    '----'  '----'  '----'
+                    V
+                DOUT
+            """
+        lfsr_width = self.config.LFSR_WIDTH
+        data_width = self.config.DATA_WIDTH
         # fixed masks for data and state
-        mask_state = np.zeros((self.config.LFSR_WIDTH, self.config.LFSR_WIDTH))
-        mask_data  = np.zeros((self.config.LFSR_WIDTH, self.config.DATA_WIDTH))
+        mask_state = np.zeros((lfsr_width, lfsr_width))
+        mask_data  = np.zeros((lfsr_width, data_width))
+        output_mask_state = np.zeros((data_width, lfsr_width))
+        output_mask_data  = np.zeros((data_width, data_width))
 
-        state_val = np.zeros(self.config.LFSR_WIDTH)
-        data_val  = np.zeros(self.config.DATA_WIDTH)
+        state_val = np.zeros(lfsr_width)
+        data_val  = np.zeros(data_width)
 
         # init bit mask
-        for i in range(self.config.LFSR_WIDTH):
+        for i in range(lfsr_width):
             mask_state[i][i] = 1
+        for i in range(min(data_width, lfsr_width)):
+            output_mask_state[i][i] = 1
 
-        for i in range(self.config.DATA_WIDTH):
-            data_mask = np.zeros(self.config.DATA_WIDTH)
-            data_mask[self.config.DATA_WIDTH-1-i] = 1
-            state_val = mask_state[self.config.LFSR_WIDTH-1]
-            data_val  = mask_data[self.config.LFSR_WIDTH-1]
-            data_val = np.logical_xor(data_val,data_mask)
-            
-            for j in range(self.config.LFSR_WIDTH):
-                if((self.config.LFSR_POLY>>(j+1)) & 1):
-                    state_val = np.logical_xor(mask_state[j],state_val)
-                    data_val = np.logical_xor(mask_data[j],data_val)
-                    
-            mask_state[1:self.config.LFSR_WIDTH] = mask_state[0:self.config.LFSR_WIDTH-1]   
-            mask_data[1:self.config.LFSR_WIDTH] = mask_data[0:self.config.LFSR_WIDTH-1]
-            
-            if (self.config.LFSR_FEED_FORWARD):
-                state_val = np.zeros(self.config.LFSR_WIDTH)
-                data_val  = data_mask
-            mask_state[0] = state_val
-            mask_data[0]  = data_val
-        
-        print(mask_state)
-        print(mask_data)
-        self.mask_state = mask_state
-        self.mask_data  = mask_data
+        def calc_fibonacci():
+            for i in range(data_width):
+                data_mask = np.zeros(data_width)
+                data_mask[data_width-1-i] = 1
+                state_val = mask_state[lfsr_width-1].copy()
+                data_val  = mask_data[lfsr_width-1].copy()
+                data_val = np.logical_xor(data_val,data_mask)
+
+                for j in range(1, lfsr_width):
+                    if((self.config.LFSR_POLY>>j) & 1):
+                        state_val = np.logical_xor(mask_state[j-1],state_val)
+                        data_val = np.logical_xor(mask_data[j-1],data_val)
+
+                mask_state[1:lfsr_width] = mask_state[0:lfsr_width-1]
+                mask_data[1:lfsr_width] = mask_data[0:lfsr_width-1]
+                output_mask_state[1:data_width] = output_mask_state[0:data_width-1]
+                output_mask_data[1:data_width]  = output_mask_data[0:data_width-1]
+                output_mask_state[0] = state_val.copy()
+                output_mask_data[0]  = data_val.copy()
+
+                if (self.config.LFSR_FEED_FORWARD):
+                    state_val = np.zeros(lfsr_width)
+                    data_val  = data_mask.copy()
+                mask_state[0] = state_val.copy()
+                mask_data[0]  = data_val.copy()
+
+        def calc_galois():
+            for i in range(data_width):
+                data_mask = np.zeros(data_width)
+                data_mask[data_width-1-i] = 1
+                state_val = mask_state[lfsr_width-1].copy()
+                data_val  = mask_data[lfsr_width-1].copy()
+                data_val = 1.0*np.logical_xor(data_val,data_mask)
+
+                mask_state[1:lfsr_width] = mask_state[0:lfsr_width-1]
+                mask_data[1:lfsr_width] = mask_data[0:lfsr_width-1]
+                output_mask_state[1:data_width] = output_mask_state[0:data_width-1]
+                output_mask_data[1:data_width]  = output_mask_data[0:data_width-1]
+                output_mask_state[0] = state_val.copy()
+                output_mask_data[0]  = data_val.copy()
+
+                if (self.config.LFSR_FEED_FORWARD):
+                    state_val = np.zeros(lfsr_width)
+                    data_val  = data_mask.copy()
+                mask_state[0] = state_val.copy()
+                mask_data[0]  = data_val.copy()
+
+                for j in range(1,lfsr_width):
+                    if((self.config.LFSR_POLY>>j) & 1):
+                        mask_state[j] = 1.0*np.logical_xor(mask_state[j],state_val)
+                        mask_data[j] = 1.0*np.logical_xor(mask_data[j],data_val)
+
+        if(self.config.LFSR_CONFIG == "FIBONACCI"):
+            calc_fibonacci()
+        elif(self.config.LFSR_CONFIG == "GALOIS"):
+            calc_galois()
+        else:
+            print("[LFSR]: the input LFSR_CONFIG is not recognized: ", self.config.LFSR_CONFIG)
+            print("        expected: ['FIBONACCI', 'GALOIS']")
+            sys.exit(1)
+
+        if(self.config.REVERSE):
+            mask_state        = mask_state[::-1,::-1]
+            mask_data         = mask_data[::-1,::-1]
+            output_mask_state = output_mask_state[::-1,::-1]
+            output_mask_data  = output_mask_data[::-1,::-1]
+
+        if(0):
+            print(mask_state)
+            print(mask_data)
+            print(output_mask_state)
+            print(output_mask_data)
+        self.mask_state = mask_state.astype(int)
+        self.mask_data  = mask_data.astype(int)
+        self.output_mask_state = output_mask_state.astype(int)
+        self.output_mask_data  = output_mask_data.astype(int)
 
     def elaborate(self, platform):
         self.calc_mask()
@@ -267,16 +378,38 @@ class Lfsr(Elaboratable):
         powers_of_two_stat = 2 ** np.arange(self.config.LFSR_WIDTH) 
         powers_of_two_data = 2 ** np.arange(self.config.DATA_WIDTH)
         for i in range(self.config.LFSR_WIDTH):
-            _mask_stat = Const(int(np.dot(self.mask_state[i], powers_of_two_stat)),unsigned(self.config.LFSR_WIDTH))
-            _mask_data = Const(int(np.dot(self.mask_data[i], powers_of_two_data)),unsigned(self.config.DATA_WIDTH))
-            m.d.comb += [self.stat_out[i].eq((self.stat_in & _mask_stat).xor() ^ (self.data_in & _mask_data).xor())
+            dprint(f"state[{i}]")
+            _mask_stat = bit_array_to_int(self.mask_state[i])
+            dprint(f"{_mask_stat:0{self.config.LFSR_WIDTH//8}x}")
+            _mask_stat = Const(_mask_stat, unsigned(self.config.LFSR_WIDTH))
+            _mask_data = bit_array_to_int(self.mask_data[i])
+            dprint(f"{_mask_data:0{self.config.DATA_WIDTH//8}x}")
+            _mask_data = Const(_mask_data, unsigned(self.config.DATA_WIDTH))
+            
+            # _mask_stat = Const(int(np.dot(self.mask_state[i], powers_of_two_stat)),unsigned(self.config.LFSR_WIDTH))
+            # _mask_data = Const(int(np.dot(self.mask_data[i], powers_of_two_data)),unsigned(self.config.DATA_WIDTH))
+            
+            m.d.comb += [self.stat_out[i].eq(Cat(self.stat_in & _mask_stat, self.data_in & _mask_data).xor())
                         ]
-
-        # for (n = 0; n < DATA_WIDTH; n = n + 1) begin : lfsr_data
-        #     wire [LFSR_WIDTH+DATA_WIDTH-1:0] mask = lfsr_mask(n+LFSR_WIDTH);
-        #     assign data_out[n] = ^({data_in, state_in} & mask);
-        # end
+        for i in range(self.config.DATA_WIDTH):
+            _mask_stat = Const(int(np.dot(self.output_mask_state[i], powers_of_two_stat)),unsigned(self.config.LFSR_WIDTH))
+            _mask_data = Const(int(np.dot(self.output_mask_data[i], powers_of_two_data)),unsigned(self.config.DATA_WIDTH))
+            m.d.comb += [self.data_out[i].eq(Cat(self.stat_in & _mask_stat, self.data_in & _mask_data).xor())
+                        ]
         return m
+    
+    def compute(self, data:int):
+        self.calc_mask()
+        sin = np.ones(self.config.LFSR_WIDTH).astype(int)
+        din = np.array([int(x) for x in f"{data:0{self.config.DATA_WIDTH}b}"[::-1]]).astype(int)
+        sout = np.zeros(self.config.LFSR_WIDTH)
+        dout = np.zeros(self.config.DATA_WIDTH)
+        for i in range(self.config.LFSR_WIDTH):
+            sout[i] = np.bitwise_xor.reduce(np.concatenate((sin & self.mask_state[i], din & self.mask_data[i]))>0)
+        for i in range(self.config.DATA_WIDTH):
+            dout[i] = np.bitwise_xor.reduce(np.concatenate((sin & self.output_mask_state[i], din & self.output_mask_data[i]))>0)
+        return (bit_array_to_int(sout), bit_array_to_int(dout))
+        
 
 
 if __name__ == '__main__':
@@ -287,6 +420,23 @@ if __name__ == '__main__':
     parser.add_argument("--no-src", dest="emit_src", default=True, action="store_false",
         help="suppress generation of source location attributes")
     cfg = Lfsr_config()
+    cfg = Lfsr_config(
+        width=32,
+        #poly=0x1edc6f41,
+        poly=0x00000003,
+        data_width=64,
+        config = 'GALOIS',
+        reverse=1
+    )
     top = Lfsr(cfg)
+    if (0):
+        byte_lanes = cfg.DATA_WIDTH // 8
+        data_in  = int.from_bytes(bytes([(x+1)*0x11 for x in range(byte_lanes)]), 'little')
+        (state_out, data_out) = top.compute(data_in)
+        print(f"{state_out:0{cfg.LFSR_WIDTH}b}")
+        print(f"{state_out:0{cfg.LFSR_WIDTH//8}x}")
+        print(f"{data_out:0{cfg.DATA_WIDTH}b}")
+        print(f"{data_out:0{byte_lanes}x}")
+    
     with open("./hw/gen/Lfsr.v", "w") as f:
         f.write(verilog.convert(top, ports=top.ports,emit_src=parser.parse_args().emit_src))
