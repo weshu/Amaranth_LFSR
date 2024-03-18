@@ -20,6 +20,7 @@ init:
 	mkdir -p ./hw/gen
 	mkdir -p ./tests/waveform
 	mkdir -p ./docs/source/_static
+	mkdir -p ./docs/source/apidoc
 
 # Tests
 unittest:

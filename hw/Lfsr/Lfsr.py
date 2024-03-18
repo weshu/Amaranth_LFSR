@@ -375,40 +375,29 @@ class Lfsr(Elaboratable):
         self.calc_mask()
         # start the logic part
         m = Module()
-        powers_of_two_stat = 2 ** np.arange(self.config.LFSR_WIDTH) 
-        powers_of_two_data = 2 ** np.arange(self.config.DATA_WIDTH)
+
+        def mat_to_sigarr(mat):
+            xlen = mat.shape[1]
+            ylen = mat.shape[0]
+            sigarr = Array([Signal(xlen) for i in range(ylen)])
+            for i in range(ylen):
+                m.d.comb += [sigarr[i].eq(0)]
+                for j in range(xlen):
+                    if(mat[i][j]>0):
+                        m.d.comb += [sigarr[i][j].eq(1)]
+            return sigarr
+
+        mask_state = mat_to_sigarr(self.mask_state)
+        mask_data  = mat_to_sigarr(self.mask_data)
         for i in range(self.config.LFSR_WIDTH):
-            dprint(f"state[{i}]")
-            _mask_stat = bit_array_to_int(self.mask_state[i])
-            dprint(f"{_mask_stat:0{self.config.LFSR_WIDTH//8}x}")
-            _mask_stat = Const(_mask_stat, unsigned(self.config.LFSR_WIDTH))
-            _mask_data = bit_array_to_int(self.mask_data[i])
-            dprint(f"{_mask_data:0{self.config.DATA_WIDTH//8}x}")
-            _mask_data = Const(_mask_data, unsigned(self.config.DATA_WIDTH))
-            
-            # _mask_stat = Const(int(np.dot(self.mask_state[i], powers_of_two_stat)),unsigned(self.config.LFSR_WIDTH))
-            # _mask_data = Const(int(np.dot(self.mask_data[i], powers_of_two_data)),unsigned(self.config.DATA_WIDTH))
-            
-            m.d.comb += [self.stat_out[i].eq(Cat(self.stat_in & _mask_stat, self.data_in & _mask_data).xor())
+            m.d.comb += [self.stat_out[i].eq(Cat(self.stat_in & mask_state[i], self.data_in & mask_data[i]).xor())
                         ]
+        mask_state_dout = mat_to_sigarr(self.output_mask_state)
+        mask_data_dout  = mat_to_sigarr(self.output_mask_data)
         for i in range(self.config.DATA_WIDTH):
-            _mask_stat = Const(int(np.dot(self.output_mask_state[i], powers_of_two_stat)),unsigned(self.config.LFSR_WIDTH))
-            _mask_data = Const(int(np.dot(self.output_mask_data[i], powers_of_two_data)),unsigned(self.config.DATA_WIDTH))
-            m.d.comb += [self.data_out[i].eq(Cat(self.stat_in & _mask_stat, self.data_in & _mask_data).xor())
+            m.d.comb += [self.data_out[i].eq(Cat(self.stat_in & mask_state_dout[i], self.data_in & mask_data_dout[i]).xor())
                         ]
         return m
-    
-    def compute(self, data:int):
-        self.calc_mask()
-        sin = np.ones(self.config.LFSR_WIDTH).astype(int)
-        din = np.array([int(x) for x in f"{data:0{self.config.DATA_WIDTH}b}"[::-1]]).astype(int)
-        sout = np.zeros(self.config.LFSR_WIDTH)
-        dout = np.zeros(self.config.DATA_WIDTH)
-        for i in range(self.config.LFSR_WIDTH):
-            sout[i] = np.bitwise_xor.reduce(np.concatenate((sin & self.mask_state[i], din & self.mask_data[i]))>0)
-        for i in range(self.config.DATA_WIDTH):
-            dout[i] = np.bitwise_xor.reduce(np.concatenate((sin & self.output_mask_state[i], din & self.output_mask_data[i]))>0)
-        return (bit_array_to_int(sout), bit_array_to_int(dout))
         
 
 
@@ -422,21 +411,12 @@ if __name__ == '__main__':
     cfg = Lfsr_config()
     cfg = Lfsr_config(
         width=32,
-        #poly=0x1edc6f41,
-        poly=0x00000003,
+        poly=0x1edc6f41,
         data_width=64,
         config = 'GALOIS',
         reverse=1
     )
     top = Lfsr(cfg)
-    if (0):
-        byte_lanes = cfg.DATA_WIDTH // 8
-        data_in  = int.from_bytes(bytes([(x+1)*0x11 for x in range(byte_lanes)]), 'little')
-        (state_out, data_out) = top.compute(data_in)
-        print(f"{state_out:0{cfg.LFSR_WIDTH}b}")
-        print(f"{state_out:0{cfg.LFSR_WIDTH//8}x}")
-        print(f"{data_out:0{cfg.DATA_WIDTH}b}")
-        print(f"{data_out:0{byte_lanes}x}")
     
     with open("./hw/gen/Lfsr.v", "w") as f:
         f.write(verilog.convert(top, ports=top.ports,emit_src=parser.parse_args().emit_src))
