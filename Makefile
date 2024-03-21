@@ -1,51 +1,51 @@
-# util for the project
-.PHONY: help
-.PHONY: init-folders unittest verilog verilog-dbg
-.PHONY: apidoc html docs clean clean-docs
+# Utilities for the project
+.PHONY: help init unittest verilog verilog-dbg apidoc html docs clean clean-docs
 
+# Help message
 help:
-	@printf 'Project Make\n'
-	@printf 'Please use `make target` where target is one of\n'
-	@printf '    init           to init the project, create some empty folders\n'
-	@printf '    unittest       to run the unit test\n'
-	@printf '    verilog        to generate verilog file for the top module\n'
-	@printf '    verilog-dbg    to generate verilog file for the top module, with src info\n'
-	@printf '    docs           to generate docs for the project\n'
-	@printf '    clean          to clean the generated verilogs and docs\n'
-	@printf '    clean-docs     to clean the generated docs\n'
+    @echo "Project Make"
+    @echo "Please use `make target` where target is one of:"
+    @echo "    init           : Initialize the project and create empty folders."
+    @echo "    unittest       : Run unit tests for the designs."
+    @echo "    verilog        : Generate a Verilog file for the top module."
+    @echo "    verilog-dbg    : Generate a Verilog file with source information included."
+    @echo "    docs           : Generate documentation using Sphinx."
+    @echo "    clean          : Remove generated Verilog files, waveform files, and documentation."
+    @echo "    clean-docs     : Remove only the generated documentation files."
 
-# Run ONCE
-# Make empty folders:
+# Initialize project (Run ONCE)
 init:
-	mkdir -p ./hw/gen
-	mkdir -p ./tests/waveform
-	mkdir -p ./docs/source/_static
-	mkdir -p ./docs/source/apidoc
+    mkdir -p ./hw/gen
+    mkdir -p ./tests/waveform
+    mkdir -p ./docs/source/_static
+    mkdir -p ./docs/source/apidoc
 
-# Tests
+# Unit tests
 unittest:
-	python -m unittest discover -t . -s tests -v
+    python -m unittest discover -t . -s tests -v
 
-# Verilog gen
+# Verilog generation
 verilog:
-	python -m hw.Lfsr.Lfsr --no-src
+    python -m hw.Lfsr.Lfsr --no-src
 
 verilog-dbg:
-	python -m hw.Lfsr.Lfsr
+    python -m hw.Lfsr.Lfsr
 
 # Doc gen
 apidoc:
-	sphinx-apidoc -f -o ./docs/source/apidoc ./hw/
+    sphinx-apidoc -f -o ./docs/source/apidoc ./hw/
 
 html:
 	$(MAKE) -C ./docs/ html
 
+# Sphinx documentation build
 docs: apidoc html
 
+# Clean up (Run as needed)
 clean:
-	rm -f ./hw/gen/*
-	rm -f ./tests/waveform/*
-	rm -f ./docs/source/apidoc/*
+    rm -rf ./hw/gen/*
+    rm -rf ./tests/waveform/*
+    rm -rf ./docs/source/apidoc/*
 
 clean-docs:
-	$(MAKE) -C ./docs/ clean
+    $(MAKE) -C ./docs/ clean

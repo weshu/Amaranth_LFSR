@@ -1,18 +1,22 @@
 import numpy as np
 
-_debug_amaranth_lfsr_ = 1
+_DEBUG_AMARANTH_LFSR = 1
 
-def print_debug(instr):
-    if _debug_amaranth_lfsr_:
-        print(instr)
+def print_debug(msg):
+    """
+    Print message when in DEBUG mode
+    Set _DEBUG_AMARANTH_LFSR to 1 during development and testing.
+    """
+    if _DEBUG_AMARANTH_LFSR:
+        print(msg)
 
-def print_warnning(instr):
-        print('[Warnning]:')
-        print(instr)
+def print_warning(msg):
+        print('[Warning]:')
+        print(msg)
 
-def print_error(instr):
+def print_error(msg):
         print('[Error]:')
-        print(instr)
+        print(msg)
 
 def bit_array_to_int(bit_array):
     """
@@ -29,4 +33,4 @@ def bit_array_to_int(bit_array):
     ---   Returns: int64 -- The decimal number corresponding with given ``bit_array``
 
     """
-    return int(np.dot(bit_array.astype(int), 2 ** np.arange(len(bit_array))))
+    return int(np.multiply(bit_array.astype(int), 2 ** np.arange(len(bit_array))))

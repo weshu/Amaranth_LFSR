@@ -9,6 +9,13 @@ class Lfsr_config():
     """
     LFSR module configuration parameters
 
+    :param width: int representing the number of bits in the LFSR state register
+    :param poly: int representing the 32-bit binary polynomial defining the feedback function
+    :param data_width: int representing the number of bits to output from the LFSR register (default = 8)
+    :param config: str specifying the LFSR configuration (FIBONACCI, GALOIS, MENEZES, or a custom polynomial). Default is FIBONACCI.
+    :param feed_forward: bool representing whether to apply feed-forward tap (default = 0)
+    :param reverse: bool representing whether to reverse the LFSR register for testing purposes (default = 0)
+
     .. code::
 
         Settings for common LFSR/CRC implementations:
@@ -135,55 +142,46 @@ class Lfsr_config():
          - "AUTO" will default to "REDUCTION" when simulating and "LOOP" for synthesizers that obey synthesis translate directives.
     """
 
-    def __init__(self, width = 31,
-                       poly = 0x10000001,
-                       data_width = 8,
-                       config = "FIBONACCI",
-                       feed_forward = 0,
-                       reverse = 0
-                        ):
+    def __init__(self, width: int = 31,
+                       poly: int = 0x10000001,
+                       data_width: int = 8,
+                       config: str = "FIBONACCI",
+                       feed_forward: bool = False, 
+                       reverse: bool = False
+                       ):
         self.DATA_WIDTH = data_width
-        self.LFSR_CONFIG = config
+        self.LFSR_CONFIG = config.upper()
         self.LFSR_WIDTH = width
         self.LFSR_POLY  = poly
-        self.LFSR_FEED_FORWARD = feed_forward
-        self.REVERSE    = reverse
+        self.LFSR_FEED_FORWARD = bool(feed_forward)
+        self.REVERSE    = bool(reverse)
+
+        if self.LFSR_CONFIG not in ["FIBONACCI", "GALOIS"]:
+            raise ValueError(f"Invalid configuration '{self.LFSR_CONFIG}', choose FIBONACCI, or GALOIS.")
 
 class Lfsr_config_fibonacci(Lfsr_config):
     """
-    LFSR module configuration with config=="FIBONACCI"
-    Other parameters is exactly the same with Lfsr_config
+    A subclass of Lfsr_config with config=="FIBONACCI" predefined.
     """
-    def __init__(self, width = 31,
-                       poly = 0x10000001,
-                       data_width = 8,
-                       feed_forward = 0,
-                       reverse = 0
-                        ):
-        self.DATA_WIDTH = data_width
-        self.LFSR_CONFIG = "FIBONACCI"
-        self.LFSR_WIDTH = width
-        self.LFSR_POLY  = poly
-        self.LFSR_FEED_FORWARD = feed_forward
-        self.REVERSE    = reverse
+
+    def __init__(self, width: int = 31,
+                       poly: int = 0x10000001,
+                       data_width: int = 8,
+                       feed_forward: bool = False,
+                       reverse: bool = False):
+        super().__init__(width=width, poly=poly, data_width=data_width, config="FIBONACCI", feed_forward=feed_forward, reverse=reverse)
 
 class Lfsr_config_galois(Lfsr_config):
     """
-    LFSR module configuration with config=="GALOIS"
-    Other parameters is exactly the same with Lfsr_config
+    A subclass of Lfsr_config with config=="GALOIS" predefined.
     """
-    def __init__(self, width = 31,
-                       poly = 0x10000001,
-                       data_width = 8,
-                       feed_forward = 0,
-                       reverse = 0
-                        ):
-        self.DATA_WIDTH = data_width
-        self.LFSR_CONFIG = "GALOIS"
-        self.LFSR_WIDTH = width
-        self.LFSR_POLY  = poly
-        self.LFSR_FEED_FORWARD = feed_forward
-        self.REVERSE    = reverse
+
+    def __init__(self, width: int = 31,
+                       poly: int = 0x10000001,
+                       data_width: int = 8,
+                       feed_forward: bool = False,
+                       reverse: bool = False):
+        super().__init__(width=width, poly=poly, config="GALOIS", data_width=data_width, feed_forward=feed_forward, reverse=reverse)
 
 class Lfsr(Elaboratable):
     """
@@ -408,7 +406,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-src", dest="emit_src", default=True, action="store_false",
         help="suppress generation of source location attributes")
-    cfg = Lfsr_config()
     cfg = Lfsr_config(
         width=32,
         poly=0x1edc6f41,

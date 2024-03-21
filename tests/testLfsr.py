@@ -16,9 +16,8 @@ def crc32(data):
     return zlib.crc32(data) & 0xffffffff
 
 def crc32c(data, crc=0xffffffff, poly=0x1edc6f41):
-#def crc32c(data, crc=0xffffffff, poly=0x00000003):
     """
-    When errors, poly can be set to 0x10000001 for step by step debug
+    When errors, poly can be set to 0x10000001/0x00000003 for step by step debug
     0x1edc6f41
     """
     poly_reverse = int(np.binary_repr(poly,32)[::-1],2)
@@ -30,18 +29,6 @@ def crc32c(data, crc=0xffffffff, poly=0x1edc6f41):
             else:
                 crc = crc >> 1
     return ~crc & 0xffffffff
-
-def crc32a(data):
-    CRC32_ISCSI = crc.Algorithm(
-                crc_width=32,
-                polynomial=0x00000003,
-                initial_crc=0xffffffff,
-                reflect_input=True,
-                reflect_output=True,
-                xor_output=0xffffffff)
-    crc_i = CRC32_ISCSI(data_width=16)
-    return crc_i.compute(data)
-
 
 def crc_tb(cfg,reffunc):
     dut = Lfsr(cfg)
