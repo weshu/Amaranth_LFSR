@@ -2,7 +2,15 @@
 This respository is a re-write of Alexforencich's [verilog-lfsr](https://github.com/alexforencich/verilog-lfsr), with Amaranth HDL.
 
 # Develop Notes:
-This project is just started and not complete yet!!!
+This is a re-implementation of Alexforencich’s verilog-lfsr project using Amaranth HDL. The purpose of this project is to test the power and efficiency of Amaranth/Python for degital design and simulation.
+
+Using Amaranth HDL, we have created a more concise and elegant code structure than Verilog. Additionally, Python provides a convenient and flexible environment for debugging and verifying the design.
+
+However, it should be noted that as Python "int" is 64-bit, caution should be taken when dealing with >64 bits wide IOs and signals. This may require additional logic to ensure correct operation.
+
+To use this project, simply clone the repository and run the provided Python script. Contributions are welcome, and we encourage you to submit pull requests with any improvements or bug fixes.
+
+Thank you for your interest in our project! We hope that you find it helpful and informative.
 
 # Pre-requirement
 Reference to [Amaranth_Prj_Template](https://github.com/weshu/Amaranth_Prj_Template)

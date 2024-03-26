@@ -2,23 +2,28 @@ import numpy as np
 
 _DEBUG_AMARANTH_LFSR = 1
 
-def print_debug(msg):
+
+def print_info(msg: str) -> None:
+    print(f"[Info]: {msg}")
+
+def print_debug(msg: str) -> None:
     """
     Print message when in DEBUG mode
     Set _DEBUG_AMARANTH_LFSR to 1 during development and testing.
+
+    :param msg: The message to be printed, as a string.
     """
     if _DEBUG_AMARANTH_LFSR:
-        print(msg)
+        print(f"[Debug]: {msg}")
 
-def print_warning(msg):
-        print('[Warning]:')
-        print(msg)
+def print_warning(msg: str) -> None:
+    print(f"[Warning]: {msg}")
 
-def print_error(msg):
-        print('[Error]:')
-        print(msg)
+def print_error(msg: str) -> None:
+    print(f"[Error]: {msg}")
 
-def bit_array_to_int(bit_array):
+
+def bit_array_to_int(bit_array) -> int:
     """
     Convert the bit_array to the int64 value
     This function returns the integer value equivalent to the input bit vector.

@@ -36,21 +36,37 @@ def crc_tb(cfg,reffunc):
     data_mask = 2**(cfg.DATA_WIDTH) - 1
     state_mask = 2**(cfg.LFSR_WIDTH) - 1
 
-    ref_dblock  = bytes([(x+1)*0x11 for x in range(byte_lanes)])
-    ref_din  = int.from_bytes(ref_dblock, 'little')
-    ref = reffunc(ref_dblock)
-
     def process():
+        ref_dblock  = bytes([(x+1)*0x11 for x in range(byte_lanes)])
+        ref_din  = int.from_bytes(ref_dblock, 'little')
         yield dut.data_in.eq(ref_din)
         yield dut.stat_in.eq(state_mask)
         yield Settle()
         stateout = yield dut.stat_out
         val = ~stateout & state_mask
+        ref = reffunc(ref_dblock)
         if(0):
             print("%s"%bin(val)[2:].zfill(cfg.LFSR_WIDTH))
             print(f'CRC: {val:08x}, expected = {ref:08x} @ DIN = {ref_din:08x}')
         assert (ref==val), \
                 f'CRC: {val:08x}, expected = {ref:08x} @ DIN = {ref_din:08x}'
+
+        ref_dblock = bytearray(itertools.islice(itertools.cycle(range(256)),1024))
+        yield dut.stat_in.eq(state_mask)
+        for b in chunks(ref_dblock, byte_lanes):
+            yield dut.data_in.eq(int.from_bytes(b,'little'))
+            yield Settle()
+            stateout = yield dut.stat_out
+            yield dut.stat_in.eq(stateout)
+
+        val = ~stateout & state_mask
+        ref = reffunc(ref_dblock)
+        if(0):
+            print("%s"%bin(val)[2:].zfill(cfg.LFSR_WIDTH))
+            print(f'CRC: {val:08x}, expected = {ref:08x}')
+        assert (ref==val), \
+                f'CRC: {val:08x}, expected = {ref:08x}'
+
     sim = Simulator(dut)
     with sim.write_vcd("./tests/waveform/test_lfsr_"+reffunc.__name__+".vcd"):
         sim.add_process(process)
@@ -114,7 +130,7 @@ class TestLfsr(TestCase):
         )
         crc_tb(cfg, crc32)
 
-    def test_CRC32_D64(self):
+    def test_CRC32_DW64(self):
         cfg = Lfsr_config_galois(
             width=32,
             poly=0x4c11db7,
@@ -133,7 +149,7 @@ class TestLfsr(TestCase):
         )
         crc_tb(cfg, crc32c)
 
-    def test_CRC32C_D64(self):
+    def test_CRC32C_DW64(self):
         cfg = Lfsr_config_galois(
             width=32,
             poly=0x1edc6f41,
@@ -152,7 +168,7 @@ class TestLfsr(TestCase):
         )
         prbs_tb(cfg, prbs9)
 
-    def test_PRBS9_D64(self):
+    def test_PRBS9_DW64(self):
         cfg = Lfsr_config_fibonacci(
             width=9,
             poly=0x021,
